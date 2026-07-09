@@ -29,11 +29,13 @@ import {
  * - Remove / Replace file buttons
  * - Responsive layout (mobile, tablet, desktop)
  *
- * @returns {JSX.Element}
+ * @param {object}   props
+ * @param {File|null}   props.file       - The currently selected File (controlled from parent).
+ * @param {function} props.onFileSelect - Called with the selected File when a valid CSV is chosen.
+ * @param {function} props.onFileRemove - Called when the user removes the file.
  */
-export default function CsvUploadCard() {
-  // ── State ──────────────────────────────────────────────────────────────
-  const [file, setFile] = useState(null);        // Selected File object
+export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
+  // ── Local UI state ───────────────────────────────────────────────────
   const [error, setError] = useState('');         // Validation error message
   const [isDragging, setIsDragging] = useState(false); // Drag over state
 
@@ -42,7 +44,6 @@ export default function CsvUploadCard() {
   // ── Constants ──────────────────────────────────────────────────────────
   const ACCEPTED_TYPE = 'text/csv';
   const ACCEPTED_EXTENSION = '.csv';
-  const MAX_FILE_SIZE_MB = 50; // Optional: could enforce max size
 
   // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -76,12 +77,11 @@ export default function CsvUploadCard() {
 
     if (!isValidCsvFile(selectedFile)) {
       setError('Invalid file type. Please upload a CSV file (.csv).');
-      setFile(null);
       return;
     }
 
-    // File is valid – store it (no auto-upload)
-    setFile(selectedFile);
+    // File is valid – notify parent (no auto-upload)
+    onFileSelect?.(selectedFile);
   };
 
   // ── Drag & Drop Handlers ───────────────────────────────────────────────
@@ -129,8 +129,8 @@ export default function CsvUploadCard() {
   // ── File Action Handlers ───────────────────────────────────────────────
 
   const handleRemoveFile = () => {
-    setFile(null);
     setError('');
+    onFileRemove?.();
   };
 
   const handleReplaceFile = () => {
