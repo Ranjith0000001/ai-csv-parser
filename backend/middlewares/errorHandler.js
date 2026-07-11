@@ -8,7 +8,8 @@
  * - Unexpected errors → show the real message in development,
  *   otherwise a generic "Internal server error".
  */
-// eslint-disable-next-line no-unused-vars
+
+
 function errorHandler(err, req, res, _next) {
   const statusCode = err.statusCode || 500;
 
@@ -33,4 +34,4 @@ function errorHandler(err, req, res, _next) {
   });
 }
 
-module.exports = errorHandler;
+export default errorHandler;

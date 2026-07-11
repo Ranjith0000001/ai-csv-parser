@@ -3,9 +3,15 @@
  *
  * Loads environment variables, imports the Express app, and starts listening.
  */
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import app from './app.js';
 
-const app = require('./app');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const PORT = process.env.PORT || 5000;
 

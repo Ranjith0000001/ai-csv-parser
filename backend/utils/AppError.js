@@ -1,21 +1,21 @@
 /**
- * Custom application error class.
+ * Custom error class for operational errors.
  *
- * Extends the built-in Error with an HTTP status code
- * for consistent error handling across the application.
+ * Extends the built-in Error class to include a status code
+ * and a flag indicating whether the error is operational.
  */
+
 class AppError extends Error {
-  /**
-   * @param {string}  message    - Human-readable error description.
-   * @param {number}  statusCode - HTTP status code (e.g. 400, 500).
-   */
-  constructor(message, statusCode = 500) {
+ 
+  constructor(message, statusCode = 500, isOperational = true) {
     super(message);
     this.statusCode = statusCode;
-    this.isOperational = true; // distinguishes expected errors from programming bugs
+    this.isOperational = isOperational;
+    this.name = this.constructor.name;
 
+    // Maintains proper stack trace for where our error was thrown
     Error.captureStackTrace(this, this.constructor);
   }
 }
 
-module.exports = AppError;
+export default AppError;

@@ -1,14 +1,16 @@
 /**
- * Import routes – defines API endpoints for CSV data import.
- *
- * Only endpoint definitions live here.
- * Controllers handle request/response. Services handle business logic.
+ * Import routes – defines API endpoints for CSV import.
  */
-const express = require('express');
-const router = express.Router();
-const { importData } = require('../controllers/importController');
+import express from 'express';
+import { importData } from '../controllers/importController.js';
 
-// POST /api/import – receive parsed CSV rows from the frontend
+const router = express.Router();
+
+/**
+ * POST /api/import
+ *
+ * Accepts parsed CSV row data and returns AI-mapped, validated, and deduplicated results.
+ */
 router.post('/import', importData);
 
-module.exports = router;
+export default router;

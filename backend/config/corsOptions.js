@@ -1,14 +1,14 @@
 /**
- * CORS configuration options.
+ * CORS configuration for the Express server.
  *
- * Reads allowed origin from the FRONTEND_URL environment variable
- * so the backend only accepts requests from the frontend application.
+ * Allows requests from the Next.js frontend and other configured origins.
  */
+
 const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
-module.exports = corsOptions;
+export default corsOptions;

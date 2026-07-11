@@ -19,20 +19,7 @@ import { MaterialReactTable } from 'material-react-table';
 import { formatFileSize } from '../utils/formatFileSize';
 
 /**
- * CsvPreviewTable - Displays parsed CSV data in a Material React Table.
- *
- * Features:
- * - Dynamic columns based on CSV headers
- * - Sticky header, sorting, global search, column filters, pagination
- * - Density toggle, column visibility, full-screen, row numbers
- * - Horizontal scrolling for large datasets
- * - Summary info bar above the table
- * - Friendly empty state when no data is provided
- *
- * @param {object[]}  data     - Array of row objects from parsed CSV.
- * @param {string}    fileName - Name of the uploaded file.
- * @param {number}    fileSize - Size of the uploaded file in bytes.
- * @param {boolean}   loading  - Whether parsing is in progress.
+ * CsvPreviewTable - Displays parsed CSV data in a premium designed Material React Table.
  */
 export default function CsvPreviewTable({ data, fileName, fileSize, loading }) {
   // ── Derive dynamic column definitions from data keys ────────────────
@@ -41,135 +28,180 @@ export default function CsvPreviewTable({ data, fileName, fileSize, loading }) {
     const firstRow = data[0];
     return Object.keys(firstRow).map((key) => ({
       accessorKey: key,
-      header: key,
-      size: 180, // reasonable starting width
+      header: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+      size: 180,
       enableClickToCopy: true,
     }));
   }, [data]);
 
-  // ── Compute summary stats ───────────────────────────────────────────
   const totalRows = data?.length ?? 0;
   const totalColumns = columns.length;
 
-  // ── Render ──────────────────────────────────────────────────────────
   if (!data || data.length === 0) {
-    return null; // handled by parent empty state
+    return null;
   }
 
   return (
     <Paper
-      elevation={4}
+      className="glass-panel fade-in-up"
       sx={{
         width: '100%',
         maxWidth: 1200,
         mx: 'auto',
-        mt: 3,
-        borderRadius: 4,
+        mt: 4,
+        borderRadius: 5,
         overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'divider',
       }}
     >
+      {/* Accent gradient top border */}
+      <Box 
+        sx={{ 
+          height: 3, 
+          width: '100%', 
+          background: 'linear-gradient(90deg, #6366f1, #3b82f6)' 
+        }} 
+      />
+
       {/* ── Preview Header ──────────────────────────────────── */}
-      <Box sx={{ px: { xs: 3, sm: 4 }, pt: { xs: 3, sm: 4 }, pb: 2 }}>
-        <Typography variant="h6" component="h2" fontWeight={700}>
-          CSV Preview
+      <Box sx={{ px: { xs: 3, sm: 5 }, pt: { xs: 4, sm: 5 }, pb: 2.5 }}>
+        <Typography variant="h6" component="h2" fontWeight={850} sx={{ fontSize: '1.25rem' }}>
+          Parsed CSV Data Preview
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          Verify the contents of the CSV file before running AI column mapping.
         </Typography>
 
         {/* Summary chips */}
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={{ xs: 1, sm: 2 }}
-          sx={{ mt: 2, flexWrap: 'wrap' }}
+          sx={{ mt: 2.5, flexWrap: 'wrap', gap: 1 }}
         >
           <Chip
-            icon={<FileIcon />}
+            icon={<FileIcon sx={{ fontSize: '0.9rem !important' }} />}
             label={`File: ${fileName}`}
             variant="outlined"
-            color="primary"
-            size="small"
+            size="medium"
+            sx={{
+              borderRadius: 2,
+              fontWeight: 600,
+              bgcolor: 'background.paper',
+              borderColor: 'primary.light',
+              color: 'primary.main',
+            }}
           />
           <Chip
-            icon={<SizeIcon />}
+            icon={<SizeIcon sx={{ fontSize: '0.9rem !important' }} />}
             label={`Size: ${formatFileSize(fileSize)}`}
             variant="outlined"
-            color="primary"
-            size="small"
+            size="medium"
+            sx={{
+              borderRadius: 2,
+              fontWeight: 600,
+              bgcolor: 'background.paper',
+              borderColor: 'primary.light',
+              color: 'primary.main',
+            }}
           />
           <Chip
-            icon={<RowsIcon />}
-            label={`Rows: ${totalRows.toLocaleString()}`}
+            icon={<RowsIcon sx={{ fontSize: '0.9rem !important' }} />}
+            label={`Total Rows: ${totalRows.toLocaleString()}`}
             variant="outlined"
-            color="success"
-            size="small"
+            size="medium"
+            sx={{
+              borderRadius: 2,
+              fontWeight: 600,
+              bgcolor: 'rgba(16, 185, 129, 0.05)',
+              borderColor: 'success.main',
+              color: 'success.main',
+            }}
           />
           <Chip
-            icon={<ColumnsIcon />}
+            icon={<ColumnsIcon sx={{ fontSize: '0.9rem !important' }} />}
             label={`Columns: ${totalColumns.toLocaleString()}`}
             variant="outlined"
-            color="info"
-            size="small"
+            size="medium"
+            sx={{
+              borderRadius: 2,
+              fontWeight: 600,
+              bgcolor: 'rgba(59, 130, 246, 0.05)',
+              borderColor: 'secondary.main',
+              color: 'secondary.main',
+            }}
           />
         </Stack>
       </Box>
 
-      <Divider sx={{ mx: 3 }} />
+      <Divider sx={{ mx: 5, opacity: 0.5 }} />
 
       {/* ── MRT Table ───────────────────────────────────────── */}
-      <Box sx={{ px: { xs: 1.5, sm: 2 }, py: 2 }}>
-        <MaterialReactTable
-          columns={columns}
-          data={data}
-          state={{ isLoading: loading }}
-          // ── Feature flags ──────────────────────────────────
-          enableStickyHeader
-          enableStickyFooter
-          enableSorting
-          enableGlobalFilter
-          enableColumnFilters
-          enablePagination
-          enableDensityToggle
-          enableColumnVisibility
-          enableFullScreenToggle
-          enableRowNumbers
-          enableHiding={false}
-          // ── Appearance ─────────────────────────────────────
-          muiTableContainerProps={{
-            sx: {
-              maxHeight: 600,
-              '&::-webkit-scrollbar': { width: 8 },
-              '&::-webkit-scrollbar-thumb': {
-                borderRadius: 4,
-                backgroundColor: 'divider',
+      <Box sx={{ px: { xs: 2, sm: 4 }, py: 3 }}>
+        <Box sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+          <MaterialReactTable
+            columns={columns}
+            data={data}
+            state={{ isLoading: loading }}
+            // ── Feature flags ──────────────────────────────────
+            enableStickyHeader
+            enableStickyFooter
+            enableSorting
+            enableGlobalFilter={false}
+            enableColumnFilters
+            enablePagination
+            enableDensityToggle
+            enableColumnVisibility
+            enableFullScreenToggle
+            enableRowNumbers
+            enableHiding={false}
+            // ── Appearance ─────────────────────────────────────
+            muiTableContainerProps={{
+              className: 'custom-scrollbar',
+              sx: {
+                maxHeight: 480,
+                bgcolor: 'background.paper',
               },
-            },
-          }}
-          muiTableHeadCellProps={{
-            sx: {
-              fontWeight: 700,
-              backgroundColor: 'grey.50',
-            },
-          }}
-          muiTableBodyCellProps={{
-            sx: {
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              maxWidth: 300,
-            },
-          }}
-          // ── Pagination ─────────────────────────────────────
-          initialState={{
-            pagination: { pageSize: 25, pageIndex: 0 },
-            density: 'comfortable',
-            showGlobalFilter: true,
-          }}
-          // ── Localization ───────────────────────────────────
-          localization={{
-            noRecordsToDisplay: 'No data to display',
-          }}
-          // ── Responsive scroll ──────────────────────────────
-          enableScrollToTopButton={false}
-        />
+            }}
+            muiTableHeadCellProps={{
+              sx: {
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                bgcolor: 'background.default',
+                color: 'text.primary',
+                borderBottom: '2px solid',
+                borderColor: 'divider',
+              },
+            }}
+            muiTableBodyCellProps={{
+              sx: {
+                fontSize: '0.85rem',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: 250,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              },
+            }}
+            muiTablePaperProps={{
+              sx: {
+                boxShadow: 'none',
+                bgcolor: 'transparent',
+              },
+            }}
+            // ── Pagination ─────────────────────────────────────
+            initialState={{
+              pagination: { pageSize: 10, pageIndex: 0 },
+              density: 'comfortable',
+            }}
+            localization={{
+              noRecordsToDisplay: 'No CSV rows to display',
+            }}
+            enableScrollToTopButton={false}
+          />
+        </Box>
       </Box>
     </Paper>
   );
-}
+}

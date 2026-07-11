@@ -6,7 +6,6 @@ import {
   Paper,
   Typography,
   Button,
-  Stack,
   IconButton,
   Divider,
 } from '@mui/material';
@@ -16,38 +15,24 @@ import {
   Close as CloseIcon,
   SwapHoriz as ReplaceIcon,
   Description as CsvIcon,
+  CheckCircle as CheckedIcon,
 } from '@mui/icons-material';
 
 /**
- * CsvUploadCard - A drag-and-drop CSV file upload component with Material UI.
- *
- * Features:
- * - Drag & Drop zone with visual feedback
- * - Browse file button fallback
- * - Accepts only .csv files
- * - Displays file info (name, size) after selection
- * - Remove / Replace file buttons
- * - Responsive layout (mobile, tablet, desktop)
- *
- * @param {object}   props
- * @param {File|null}   props.file       - The currently selected File (controlled from parent).
- * @param {function} props.onFileSelect - Called with the selected File when a valid CSV is chosen.
- * @param {function} props.onFileRemove - Called when the user removes the file.
+ * CsvUploadCard - A premium drag-and-drop CSV file upload component.
  */
 export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
   // ── Local UI state ───────────────────────────────────────────────────
-  const [error, setError] = useState('');         // Validation error message
-  const [isDragging, setIsDragging] = useState(false); // Drag over state
+  const [error, setError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
-  const fileInputRef = useRef(null);              // Hidden file input ref
+  const fileInputRef = useRef(null);
 
   // ── Constants ──────────────────────────────────────────────────────────
   const ACCEPTED_TYPE = 'text/csv';
   const ACCEPTED_EXTENSION = '.csv';
 
   // ── Helpers ────────────────────────────────────────────────────────────
-
-  /** Format bytes into a human-readable string (e.g. "1.2 MB") */
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const units = ['Bytes', 'KB', 'MB', 'GB'];
@@ -56,36 +41,26 @@ export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
     return `${size} ${units[i]}`;
   };
 
-  /** Validate the dropped/selected file is a CSV */
   const isValidCsvFile = (selectedFile) => {
     if (!selectedFile) return false;
-
-    // Check MIME type (browser's best-effort) OR extension fallback
     const isCsvMime = selectedFile.type === ACCEPTED_TYPE;
     const isCsvExtension = selectedFile.name
       .toLowerCase()
       .endsWith(ACCEPTED_EXTENSION);
-
     return isCsvMime || isCsvExtension;
   };
 
-  /** Process and validate a file candidate */
   const processFile = (selectedFile) => {
-    setError(''); // Clear previous error
-
+    setError('');
     if (!selectedFile) return;
-
     if (!isValidCsvFile(selectedFile)) {
-      setError('Invalid file type. Please upload a CSV file (.csv).');
+      setError('Invalid file format. Please upload a standard CSV file (.csv).');
       return;
     }
-
-    // File is valid – notify parent (no auto-upload)
     onFileSelect?.(selectedFile);
   };
 
   // ── Drag & Drop Handlers ───────────────────────────────────────────────
-
   const handleDragEnter = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -101,7 +76,6 @@ export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    // Keep highlight while hovering
   }, []);
 
   const handleDrop = useCallback((e) => {
@@ -114,7 +88,6 @@ export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
   }, []);
 
   // ── Browse / Input Handler ─────────────────────────────────────────────
-
   const handleBrowseClick = () => {
     fileInputRef.current?.click();
   };
@@ -122,12 +95,10 @@ export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
   const handleInputChange = (e) => {
     const selectedFile = e.target.files?.[0];
     processFile(selectedFile);
-    // Reset input so selecting the same file again triggers onChange
     e.target.value = '';
   };
 
   // ── File Action Handlers ───────────────────────────────────────────────
-
   const handleRemoveFile = () => {
     setError('');
     onFileRemove?.();
@@ -137,66 +108,93 @@ export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
     fileInputRef.current?.click();
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────
-
   return (
     <Paper
-      elevation={4}
+      className="glass-panel glass-panel-hover fade-in-up"
       sx={{
         width: '100%',
         maxWidth: 560,
         mx: 'auto',
-        borderRadius: 4,
+        borderRadius: 5,
         overflow: 'hidden',
-        transition: 'box-shadow 0.3s ease',
-        '&:hover': {
-          boxShadow: '0 12px 40px rgba(0,0,0,0.08)',
-        },
+        border: '1px solid',
+        borderColor: 'divider',
+        position: 'relative',
       }}
     >
+      {/* Top glowing ambient line */}
+      <Box 
+        sx={{ 
+          height: 4, 
+          width: '100%', 
+          background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899)' 
+        }} 
+      />
+
       {/* ── Header ───────────────────────────────────────────── */}
       <Box
         sx={{
-          px: { xs: 3, sm: 4 },
-          pt: { xs: 3, sm: 4 },
-          pb: 2,
+          px: { xs: 3, sm: 5 },
+          pt: { xs: 4, sm: 5 },
+          pb: 3,
           textAlign: 'center',
         }}
       >
-        {/* App Icon / Logo */}
-        <CsvIcon
+        <Box 
+          className="animate-float"
           sx={{
-            fontSize: 48,
-            color: 'primary.main',
-            mb: 1.5,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 72,
+            height: 72,
+            borderRadius: 4,
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15))',
+            border: '1px solid',
+            borderColor: 'primary.light',
+            mb: 2.5,
           }}
-        />
+        >
+          <CsvIcon
+            sx={{
+              fontSize: 38,
+              color: 'primary.main',
+            }}
+          />
+        </Box>
 
-        {/* Title */}
         <Typography
           variant="h5"
           component="h1"
-          fontWeight={700}
-          sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
+          fontWeight={800}
+          sx={{ 
+            fontSize: { xs: '1.4rem', sm: '1.75rem' },
+            background: 'linear-gradient(135deg, #818cf8 0%, #c084fc 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            '.light &': {
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }
+          }}
         >
-          AI Powered CSV Importer
+          AI CSV CRM Importer
         </Typography>
 
-        {/* Description */}
         <Typography
           variant="body2"
           color="text.secondary"
-          sx={{ mt: 0.75, maxWidth: 400, mx: 'auto' }}
+          sx={{ mt: 1.2, maxWidth: 380, mx: 'auto', fontSize: '0.9rem' }}
         >
-          Upload any CRM CSV file to intelligently extract and map lead information.
+          Intelligently parse CRM leads, map custom headers with AI, and clean duplicate entries in seconds.
         </Typography>
       </Box>
 
-      <Divider sx={{ mx: 3 }} />
+      <Divider sx={{ mx: 4, opacity: 0.6 }} />
 
       {/* ── Upload Area ──────────────────────────────────────── */}
-      <Box sx={{ px: { xs: 3, sm: 4 }, py: 3 }}>
-        {/* Hidden file input */}
+      <Box sx={{ px: { xs: 3, sm: 5 }, py: 4 }}>
         <input
           ref={fileInputRef}
           type="file"
@@ -206,7 +204,6 @@ export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
         />
 
         {!file ? (
-          /* ── Drop Zone (no file selected) ──────────────────── */
           <Box
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
@@ -216,157 +213,210 @@ export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
             sx={{
               border: '2px dashed',
               borderColor: isDragging ? 'primary.main' : 'divider',
-              borderRadius: 3,
-              p: { xs: 3, sm: 4 },
+              borderRadius: 4,
+              p: { xs: 4, sm: 5 },
               textAlign: 'center',
               cursor: 'pointer',
               transition: 'all 0.25s ease',
-              bgcolor: isDragging
-                ? 'primary.light'
-                : 'grey.50',
+              bgcolor: isDragging ? 'rgba(99, 102, 241, 0.08)' : 'rgba(0, 0, 0, 0.02)',
+              position: 'relative',
+              overflow: 'hidden',
               '&:hover': {
                 borderColor: 'primary.main',
-                bgcolor: 'primary.light',
+                bgcolor: 'rgba(99, 102, 241, 0.04)',
                 transform: 'translateY(-2px)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+                boxShadow: '0 8px 24px rgba(99, 102, 241, 0.05)',
               },
             }}
           >
+            {isDragging && (
+              <Box 
+                sx={{ 
+                  position: 'absolute', 
+                  inset: 0, 
+                  border: '2px solid #6366f1', 
+                  borderRadius: 4,
+                  animation: 'glow-pulse 1.5s infinite',
+                  pointerEvents: 'none'
+                }} 
+              />
+            )}
+
             <CloudUploadIcon
               sx={{
-                fontSize: 56,
-                color: isDragging ? 'primary.dark' : 'text.disabled',
-                mb: 1.5,
+                fontSize: 52,
+                color: isDragging ? 'primary.main' : 'text.disabled',
+                mb: 2,
                 transition: 'color 0.25s ease',
               }}
             />
             <Typography
               variant="body1"
-              fontWeight={600}
-              color={isDragging ? 'primary.dark' : 'text.primary'}
-              sx={{ transition: 'color 0.25s ease' }}
+              fontWeight={700}
+              color={isDragging ? 'primary.main' : 'text.primary'}
             >
-              Drag & Drop CSV here or click to browse
+              Drag & drop CSV file here
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 0.5 }}
+            >
+              or <span style={{ color: '#818cf8', fontWeight: 650 }}>browse local files</span>
             </Typography>
             <Typography
               variant="caption"
               color="text.disabled"
-              sx={{ mt: 0.5, display: 'block' }}
+              sx={{ mt: 1.5, display: 'block' }}
             >
-              Only .csv files are accepted
+              Only standard comma-separated .csv files are supported
             </Typography>
           </Box>
         ) : (
-          /* ── File Info Card (file selected) ────────────────── */
           <Paper
             variant="outlined"
             sx={{
-              borderRadius: 3,
-              p: 2.5,
-              borderColor: 'success.light',
-              bgcolor: 'success.contrastText',
+              borderRadius: 4,
+              p: 3,
+              borderColor: 'success.main',
+              bgcolor: 'rgba(16, 185, 129, 0.04)',
+              borderWidth: '1px',
+              position: 'relative',
+              overflow: 'hidden',
             }}
           >
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={2}
-            >
-              {/* File icon */}
-              <FileIcon
-                sx={{ fontSize: 40, color: 'success.main' }}
-              />
+            {/* Success background glow */}
+            <Box 
+              sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: 100,
+                height: 100,
+                background: 'radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0) 70%)',
+                pointerEvents: 'none'
+              }}
+            />
 
-              {/* File details */}
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 2.5,
+              }}
+            >
+              <Box 
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 48,
+                  height: 48,
+                  borderRadius: 3,
+                  bgcolor: 'rgba(16, 185, 129, 0.1)',
+                  color: 'success.main'
+                }}
+              >
+                <FileIcon sx={{ fontSize: 26 }} />
+              </Box>
+
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography
-                  variant="subtitle2"
-                  fontWeight={600}
-                  noWrap
-                >
-                  {file.name}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={700}
+                    noWrap
+                    sx={{ fontSize: '0.95rem' }}
+                  >
+                    {file.name}
+                  </Typography>
+                  <CheckedIcon color="success" sx={{ fontSize: 16 }} />
+                </Box>
                 <Typography
                   variant="caption"
                   color="text.secondary"
+                  sx={{ display: 'block', mt: 0.25 }}
                 >
-                  {formatFileSize(file.size)}
+                  File Size: {formatFileSize(file.size)}
                 </Typography>
               </Box>
 
-              {/* Action buttons */}
-              <Stack direction="row" spacing={0.5}>
-                {/* Replace file */}
+              <Box sx={{ display: 'flex', gap: 1 }}>
                 <IconButton
                   size="small"
-                  color="primary"
                   onClick={handleReplaceFile}
                   title="Replace file"
                   sx={{
-                    transition: 'transform 0.2s ease',
-                    '&:hover': { transform: 'scale(1.1)' },
+                    bgcolor: 'background.paper',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    color: 'primary.main',
+                    '&:hover': { bgcolor: 'primary.light' },
                   }}
                 >
                   <ReplaceIcon fontSize="small" />
                 </IconButton>
 
-                {/* Remove file */}
                 <IconButton
                   size="small"
-                  color="error"
                   onClick={handleRemoveFile}
                   title="Remove file"
                   sx={{
-                    transition: 'transform 0.2s ease',
-                    '&:hover': { transform: 'scale(1.1)' },
+                    bgcolor: 'background.paper',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    color: 'error.main',
+                    '&:hover': { bgcolor: 'error.light' },
                   }}
                 >
                   <CloseIcon fontSize="small" />
                 </IconButton>
-              </Stack>
-            </Stack>
+              </Box>
+            </Box>
           </Paper>
         )}
 
-        {/* ── Error Message ──────────────────────────────────── */}
         {error && (
           <Typography
             variant="body2"
-            color="error"
-            sx={{ mt: 1.5, textAlign: 'center' }}
+            color="error.main"
+            fontWeight={600}
+            sx={{ mt: 2, textAlign: 'center' }}
           >
             {error}
           </Typography>
         )}
       </Box>
 
-      {/* ── Footer / Browse fallback ─────────────────────────── */}
+      {/* ── Footer ───────────────────────────────────────────── */}
       <Box
         sx={{
-          px: { xs: 3, sm: 4 },
-          pb: { xs: 3, sm: 4 },
+          px: { xs: 3, sm: 5 },
+          pb: { xs: 4, sm: 5 },
           textAlign: 'center',
         }}
       >
-        <Button
-          variant="outlined"
-          startIcon={<CloudUploadIcon />}
-          onClick={handleBrowseClick}
-          sx={{
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 600,
-            px: 3,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              transform: 'translateY(-1px)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            },
-          }}
-        >
-          {file ? 'Browse another file' : 'Browse Files'}
-        </Button>
+        {!file && (
+          <Button
+            variant="outlined"
+            onClick={handleBrowseClick}
+            sx={{
+              borderRadius: 3,
+              borderColor: 'divider',
+              color: 'text.primary',
+              px: 4,
+              py: 1.2,
+              '&:hover': {
+                borderColor: 'primary.main',
+                bgcolor: 'rgba(99, 102, 241, 0.04)',
+              }
+            }}
+          >
+            Browse File
+          </Button>
+        )}
       </Box>
     </Paper>
   );
-}
+}

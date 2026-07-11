@@ -1,81 +1,96 @@
 /**
  * AI Service – uses Groq's Llama model for CRM field mapping.
- *
- * Replaced the previous Gemini implementation. The external interface
- * (mapToCrmSchema function) remains identical so consuming services
- * do not need changes.
  */
-const Groq = require('groq-sdk');
-const CRM_SYSTEM_PROMPT = require('../prompts/crmPrompt');
-
-// ── Groq Client Initialization ─────────────────────────────────────────
-const apiKey = process.env.GROQ_API_KEY;
-
-if (!apiKey) {
-  console.error('GROQ_API_KEY is not set in environment variables.');
-}
-
-const groq = new Groq({ apiKey });
+import CRM_SYSTEM_PROMPT from '../prompts/crmPrompt.js';
+import logger from '../utils/logger.js';
 
 const MODEL = 'llama-3.3-70b-versatile';
+const REQUEST_TIMEOUT = 60000;
+
+let groqClient = null;
+
+async function getGroqClient() {
+  if (!groqClient) {
+    const { default: Groq } = await import('groq-sdk');
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+      logger.error('GROQ_API_KEY is not set in environment variables.');
+      throw new Error('GROQ_API_KEY is not configured');
+    }
+
+    groqClient = new Groq({ apiKey });
+  }
+  return groqClient;
+}
 
 /**
  * Send parsed CSV records to Groq and receive mapped CRM JSON.
  *
  * @param {object[]} rows - Array of row objects from the parsed CSV.
  * @returns {Promise<object[]>} Array of CRM-mapped record objects.
- * @throws {Error} If the API call fails or response cannot be parsed.
  */
 async function mapToCrmSchema(rows) {
   if (!rows || rows.length === 0) {
     return [];
   }
 
-  // Build the user message containing the CSV data
   const csvDataJson = JSON.stringify(rows, null, 2);
   const userMessage = `Map the following CSV records to the CRM schema:\n\n${csvDataJson}`;
 
   try {
-    const response = await groq.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: 'system', content: CRM_SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      temperature: 0.1, // low temperature for consistent, deterministic output
-    });
+    const groq = await getGroqClient();
 
-    // Extract the text response
+    logger.info('Requesting CRM mapping from Groq AI', { recordCount: rows.length, model: MODEL });
+
+    const response = await Promise.race([
+      groq.chat.completions.create({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: CRM_SYSTEM_PROMPT },
+          { role: 'user', content: userMessage },
+        ],
+        temperature: 0.1,
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Groq API request timeout')), REQUEST_TIMEOUT)
+      ),
+    ]);
+
     const text = response?.choices?.[0]?.message?.content?.trim();
 
     if (!text) {
       throw new Error('Groq returned an empty response.');
     }
 
-    // Parse the JSON response
     let mappedRecords;
     try {
       mappedRecords = JSON.parse(text);
     } catch (parseError) {
-      // Attempt to extract JSON from the response if wrapped in markdown
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        mappedRecords = JSON.parse(jsonMatch[0]);
+        try {
+          mappedRecords = JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          logger.error('Failed to parse Groq response as JSON', { text: text.substring(0, 200) });
+          throw new Error('Invalid JSON response from AI service');
+        }
       } else {
-        throw new Error(`Failed to parse Groq response as JSON: ${parseError.message}`);
+        logger.error('Failed to parse Groq response as JSON', { text: text.substring(0, 200) });
+        throw new Error('Invalid JSON response from AI service');
       }
     }
 
-    // Validate that the response is an array
     if (!Array.isArray(mappedRecords)) {
-      throw new Error('Groq response is not an array of records.');
+      throw new Error('AI response is not in the expected format');
     }
 
+    logger.info('CRM mapping completed successfully', { recordCount: mappedRecords.length });
     return mappedRecords;
   } catch (error) {
-    // Wrap the error with context
-    throw new Error(`Groq CRM mapping failed: ${error.message}`);
+    logger.error('Groq CRM mapping failed', { error: error.message });
+    throw new Error(`AI mapping failed: ${error.message}`);
   }
 }
 
-module.exports = { mapToCrmSchema };
+export { mapToCrmSchema };

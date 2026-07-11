@@ -4,11 +4,11 @@
  * Configures middleware, routes, and the global error handler.
  * The server.js file starts the server using this app.
  */
-const express = require('express');
-const cors = require('cors');
-const corsOptions = require('./config/corsOptions');
-const importRoutes = require('./routes/importRoutes');
-const errorHandler = require('./middlewares/errorHandler');
+import express from 'express';
+import cors from 'cors';
+import corsOptions from './config/corsOptions.js';
+import importRoutes from './routes/importRoutes.js';
+import errorHandler from './middlewares/errorHandler.js';
 
 const app = express();
 
@@ -36,4 +36,4 @@ app.use((req, res) => {
 // ── Global error handler ───────────────────────────────────────────────
 app.use(errorHandler);
 
-module.exports = app;
+export default app;

@@ -4,15 +4,13 @@
  * Receives parsed CSV rows, sends them to the AI service for CRM field mapping,
  * then validates and deduplicates the mapped records.
  */
-const { mapToCrmSchema } = require('./aiService');
+import { mapToCrmSchema } from './aiService.js';
+import logger from '../utils/logger.js';
 
 /**
  * Clean and normalize a CRM record.
  * - Trims string values
  * - Converts undefined/null to empty strings
- *
- * @param {object} record
- * @returns {object}
  */
 function cleanRecord(record) {
   const cleaned = {};
@@ -55,6 +53,8 @@ function isValidRecord(record) {
  * }>}
  */
 async function processImport(rows) {
+  logger.info('Starting import process', { rowCount: rows.length });
+
   // Send rows to AI service for intelligent CRM field mapping
   const mappedRows = await mapToCrmSchema(rows);
 
@@ -92,6 +92,13 @@ async function processImport(rows) {
     }
   }
 
+  logger.info('Import process completed', {
+    processed: cleanedRecords.length,
+    imported: importedRecords.length,
+    duplicates: duplicateRecords.length,
+    invalid: invalidRecords.length,
+  });
+
   return {
     success: true,
     summary: {
@@ -100,14 +107,10 @@ async function processImport(rows) {
       duplicates: duplicateRecords.length,
       invalid: invalidRecords.length,
     },
-    originalRows: rows,
     importedRecords,
-    importedRows: importedRecords,
     duplicateRecords,
-    duplicateRows: duplicateRecords,
     invalidRecords,
-    invalidRows: invalidRecords,
   };
 }
 
-module.exports = { processImport };
+export { processImport };
