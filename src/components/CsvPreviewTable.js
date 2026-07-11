@@ -26,12 +26,35 @@ export default function CsvPreviewTable({ data, fileName, fileSize, loading }) {
   const columns = useMemo(() => {
     if (!data || data.length === 0) return [];
     const firstRow = data[0];
-    return Object.keys(firstRow).map((key) => ({
+    const keys = Object.keys(firstRow);
+    
+    // Serial number column
+    const serialColumn = {
+      id: 'serialNo',
+      header: 'S.No',
+      size: 70,
+      enableSorting: false,
+      enableColumnFilter: false,
+      enableClickToCopy: false,
+      Cell: ({ row }) => row.index + 1,
+      muiTableBodyCellProps: {
+        align: 'center',
+        sx: { fontWeight: 600, color: 'text.secondary' },
+      },
+      muiTableHeadCellProps: {
+        align: 'center',
+        sx: { fontWeight: 700 },
+      },
+    };
+    
+    const dataColumns = keys.map((key) => ({
       accessorKey: key,
       header: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
       size: 180,
       enableClickToCopy: true,
     }));
+    
+    return [serialColumn, ...dataColumns];
   }, [data]);
 
   const totalRows = data?.length ?? 0;
@@ -153,7 +176,7 @@ export default function CsvPreviewTable({ data, fileName, fileSize, loading }) {
             enableDensityToggle
             enableColumnVisibility
             enableFullScreenToggle
-            enableRowNumbers
+            enableRowNumbers={false}
             enableHiding={false}
             // ── Appearance ─────────────────────────────────────
             muiTableContainerProps={{
@@ -204,4 +227,4 @@ export default function CsvPreviewTable({ data, fileName, fileSize, loading }) {
       </Box>
     </Paper>
   );
-}
+}

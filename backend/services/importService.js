@@ -29,9 +29,6 @@ function cleanRecord(record) {
 /**
  * Check if a record is valid.
  * A record is invalid only if BOTH email and mobile_without_country_code are empty.
- *
- * @param {object} record
- * @returns {boolean}
  */
 function isValidRecord(record) {
   const email = (record.email || '').trim();
@@ -43,9 +40,18 @@ function isValidRecord(record) {
  * Process incoming CSV row data through the AI service for CRM field mapping,
  * then validate and deduplicate the results.
  *
+ * Supports partial success - if AI mapping fails mid-batch, returns processed
+ * records with error info for retry of remaining records.
+ *
  * @param {object[]} rows - Array of row objects parsed from the CSV.
  * @returns {Promise<{
  *   success: boolean,
+ *   partialSuccess: boolean,
+ *   error: string | null,
+ *   failedBatch: number | null,
+ *   totalRecords: number,
+ *   processedRecords: number,
+ *   remainingRecords: number,
  *   summary: { processed: number, imported: number, duplicates: number, invalid: number },
  *   importedRecords: object[],
  *   duplicateRecords: object[],
@@ -56,27 +62,84 @@ async function processImport(rows) {
   logger.info('Starting import process', { rowCount: rows.length });
 
   // Send rows to AI service for intelligent CRM field mapping
-  const mappedRows = await mapToCrmSchema(rows);
+  const aiResult = await mapToCrmSchema(rows);
 
-  // Clean all records
+  // Handle partial success from AI service
+  if (!aiResult.success && aiResult.partialSuccess) {
+    logger.warn('Partial success from AI service', {
+      processed: aiResult.processedRecords,
+      remaining: aiResult.remainingRecords,
+    });
+
+    // Process the successfully mapped records
+    const mappedRows = aiResult.data;
+    const cleanedRecords = mappedRows.map(cleanRecord);
+
+    const importedRecords = [];
+    const duplicateRecords = [];
+    const invalidRecords = [];
+
+    const seenEmails = new Set();
+    const seenMobiles = new Set();
+
+    for (const record of cleanedRecords) {
+      if (!isValidRecord(record)) {
+        invalidRecords.push(record);
+        continue;
+      }
+
+      const emailKey = (record.email || '').toLowerCase().trim();
+      const mobileKey = (record.mobile_without_country_code || '').trim();
+
+      const isDuplicate = (emailKey && seenEmails.has(emailKey)) ||
+                          (mobileKey && seenMobiles.has(mobileKey));
+
+      if (isDuplicate) {
+        duplicateRecords.push(record);
+      } else {
+        importedRecords.push(record);
+        if (emailKey) seenEmails.add(emailKey);
+        if (mobileKey) seenMobiles.add(mobileKey);
+      }
+    }
+
+    return {
+      success: false,
+      partialSuccess: true,
+      error: aiResult.error,
+      failedBatch: aiResult.failedBatch,
+      totalRecords: aiResult.totalRecords,
+      processedRecords: aiResult.processedRecords,
+      remainingRecords: aiResult.remainingRecords,
+      summary: {
+        processed: cleanedRecords.length,
+        imported: importedRecords.length,
+        duplicates: duplicateRecords.length,
+        invalid: invalidRecords.length,
+      },
+      importedRecords,
+      duplicateRecords,
+      invalidRecords,
+    };
+  }
+
+  // Full success - process all records
+  const mappedRows = aiResult.data || [];
   const cleanedRecords = mappedRows.map(cleanRecord);
 
   const importedRecords = [];
   const duplicateRecords = [];
   const invalidRecords = [];
 
-  // Track seen emails and mobiles for duplicate detection
   const seenEmails = new Set();
   const seenMobiles = new Set();
 
   for (const record of cleanedRecords) {
-    // Check validity first
     if (!isValidRecord(record)) {
       invalidRecords.push(record);
       continue;
     }
 
-    // Check for duplicates
     const emailKey = (record.email || '').toLowerCase().trim();
     const mobileKey = (record.mobile_without_country_code || '').trim();
 
@@ -101,6 +164,12 @@ async function processImport(rows) {
 
   return {
     success: true,
+    partialSuccess: false,
+    error: null,
+    failedBatch: null,
+    totalRecords: rows.length,
+    processedRecords: cleanedRecords.length,
+    remainingRecords: 0,
     summary: {
       processed: cleanedRecords.length,
       imported: importedRecords.length,

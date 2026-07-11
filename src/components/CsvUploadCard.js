@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
+import { showError } from '../utils/toast';
 import {
   Box,
   Paper,
@@ -54,7 +55,9 @@ export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
     setError('');
     if (!selectedFile) return;
     if (!isValidCsvFile(selectedFile)) {
-      setError('Invalid file format. Please upload a standard CSV file (.csv).');
+      const msg = `Invalid file type: "${selectedFile.name}". Please upload a CSV file (.csv).`;
+      setError(msg);
+      showError(msg);
       return;
     }
     onFileSelect?.(selectedFile);
@@ -419,4 +422,4 @@ export default function CsvUploadCard({ file, onFileSelect, onFileRemove }) {
       </Box>
     </Paper>
   );
-}
+}

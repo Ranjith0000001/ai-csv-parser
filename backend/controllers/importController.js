@@ -41,7 +41,12 @@ async function importData(req, res, next) {
     const result = await processImport(rows);
 
     // ── Send response ─────────────────────────────────────────
-    logger.info('Import request processed successfully');
+    logger.info('Import request processed successfully', { 
+      success: result.success,
+      partialSuccess: result.partialSuccess,
+      processed: result.processedRecords,
+      remaining: result.remainingRecords,
+    });
     res.status(200).json(result);
   } catch (err) {
     logger.error('Import request failed', { error: err.message });

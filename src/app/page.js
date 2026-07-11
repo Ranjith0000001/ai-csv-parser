@@ -36,6 +36,7 @@ import { useColorMode } from '../components/MuiThemeProvider';
 import { parseCsvFile } from '../utils/csvParser';
 import apiClient, { API_ENDPOINTS } from '../config/apiConfig';
 import { MaterialReactTable } from 'material-react-table';
+import { showError, showSuccess } from '../utils/toast';
 
 // ── Demo Lead CSV Content ─────────────────────────────────────────────
 const DEMO_CSV_DATA = `created_at,name,email,country_code,mobile_without_country_code,company,city,state,country,lead_owner,crm_status,crm_note,data_source,possession_time,description
@@ -130,18 +131,25 @@ export default function Home() {
       const result = await parseCsvFile(selectedFile);
 
       if (!result.data || result.data.length === 0) {
-        setParseError('The CSV file appears to be empty or contains no valid data rows.');
+        const msg = 'The CSV file appears to be empty or contains no valid data rows.';
+        setParseError(msg);
+        showError(msg);
         setParsedData(null);
       } else {
         if (result.errors && result.errors.length > 0 && result.data.length === 0) {
-          setParseError(`CSV parsing failed: ${result.errors[0].message}`);
+          const msg = `CSV parsing failed: ${result.errors[0].message}`;
+          setParseError(msg);
+          showError(msg);
           setParsedData(null);
         } else {
           setParsedData(result.data);
+          showSuccess(`CSV parsed successfully! Found ${result.data.length} rows.`);
         }
       }
     } catch (err) {
-      setParseError(err.message || 'An unexpected error occurred while parsing the CSV file.');
+      const msg = err.message || 'An unexpected error occurred while parsing the CSV file.';
+      setParseError(msg);
+      showError(msg);
       setParsedData(null);
     } finally {
       setLoading(false);
@@ -160,6 +168,83 @@ export default function Home() {
     setInvalidTableData([]);
     setActiveTab(0);
   }, []);
+
+  // Retry remaining records after partial success
+  const handleRetryRemaining = useCallback(async () => {
+    if (!importResult || !importResult.remainingRecords || !parsedData) return;
+
+    const remainingCount = importResult.remainingRecords;
+    const processedCount = importResult.processedRecords;
+    
+    // Get the remaining records (skip the ones already processed)
+    const remainingRecords = parsedData.slice(processedCount, processedCount + remainingCount);
+
+    if (remainingRecords.length === 0) {
+      showInfo('All records have been processed!');
+      return;
+    }
+
+    setImporting(true);
+    setImportError('');
+
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.IMPORT_CSV, {
+        rows: remainingRecords,
+      });
+
+      // Merge with existing results
+      const mergedImported = [...importedTableData, ...(response.importedRecords || [])];
+      const mergedDuplicate = [...duplicateTableData, ...(response.duplicateRecords || [])];
+      const mergedInvalid = [...invalidTableData, ...(response.invalidRecords || [])];
+      const mergedOriginal = [...originalTableData, ...(response.originalRows || remainingRecords)];
+
+      const totalProcessed = processedCount + (response.processedRecords || 0);
+      const totalRemaining = remainingCount - (response.processedRecords || 0);
+
+      const mergedSummary = {
+        processed: totalProcessed,
+        imported: mergedImported.length,
+        duplicates: mergedDuplicate.length,
+        invalid: mergedInvalid.length,
+      };
+
+      const mergedResult = {
+        success: response.success && totalRemaining === 0,
+        partialSuccess: totalRemaining > 0,
+        error: response.error,
+        failedBatch: response.failedBatch,
+        totalRecords: importResult.totalRecords,
+        processedRecords: totalProcessed,
+        remainingRecords: totalRemaining,
+        summary: mergedSummary,
+        importedRecords: mergedImported,
+        duplicateRecords: mergedDuplicate,
+        invalidRecords: mergedInvalid,
+        originalRows: mergedOriginal,
+      };
+
+      setImportResult(mergedResult);
+      setOriginalTableData(mergedOriginal);
+      setImportedTableData(mergedImported);
+      setDuplicateTableData(mergedDuplicate);
+      setInvalidTableData(mergedInvalid);
+
+      if (response.success && totalRemaining === 0) {
+        showSuccess(`Import completed! ${mergedSummary.imported} leads imported successfully.`);
+      } else if (response.partialSuccess) {
+        showWarning(
+          `Partial import: ${mergedSummary.imported} leads imported. ${totalRemaining} records remaining. Please retry.`
+        );
+      }
+    } catch (err) {
+      const message = err.message || 'Failed to retry import. Please check connection and try again.';
+      setImportError(message);
+      showError(message);
+      console.error('[Retry Error]', err);
+    } finally {
+      setImporting(false);
+    }
+  }, [importResult, parsedData, importedTableData, duplicateTableData, invalidTableData, originalTableData]);
 
   // Demo CSV data injector
   const handleLoadDemoCSV = useCallback(() => {
@@ -198,6 +283,12 @@ export default function Home() {
     return {
       ...(response || {}),
       success: response?.success ?? true,
+      partialSuccess: response?.partialSuccess ?? false,
+      error: response?.error ?? null,
+      failedBatch: response?.failedBatch ?? null,
+      totalRecords: response?.totalRecords ?? fallbackRows.length,
+      processedRecords: response?.processedRecords ?? importedRecords.length,
+      remainingRecords: response?.remainingRecords ?? 0,
       summary: {
         processed: summary.processed ?? fallbackRows.length,
         imported: summary.imported ?? importedRecords.length,
@@ -227,6 +318,24 @@ export default function Home() {
         rows: parsedData,
       });
 
+      // Handle partial success (rate limit exceeded)
+      if (response.partialSuccess && !response.success) {
+        const normalizedResponse = normalizeImportResponse(response, parsedData);
+        
+        setImportResult(normalizedResponse);
+        setOriginalTableData([...normalizedResponse.originalRows]);
+        setImportedTableData([...normalizedResponse.importedRecords]);
+        setDuplicateTableData([...normalizedResponse.duplicateRecords]);
+        setInvalidTableData([...normalizedResponse.invalidRecords]);
+
+        const { summary } = normalizedResponse;
+        showWarning(
+          `Partial import: ${summary.imported} leads imported, ${summary.duplicates} duplicates, ${summary.invalid} invalid. ${response.remainingRecords} records remaining. Please retry.`
+        );
+        return;
+      }
+
+      // Full success
       const normalizedResponse = normalizeImportResponse(response, parsedData);
 
       setImportResult(normalizedResponse);
@@ -234,9 +343,15 @@ export default function Home() {
       setImportedTableData([...normalizedResponse.importedRecords]);
       setDuplicateTableData([...normalizedResponse.duplicateRecords]);
       setInvalidTableData([...normalizedResponse.invalidRecords]);
+
+      const { summary } = normalizedResponse;
+      showSuccess(
+        `Import completed! ${summary.imported} leads imported, ${summary.duplicates} duplicates removed, ${summary.invalid} invalid records.`
+      );
     } catch (err) {
       const message = err.message || 'Failed to import CSV data. Please check connection and try again.';
       setImportError(message);
+      showError(message);
       console.error('[Import Error]', err);
     } finally {
       setImporting(false);
@@ -252,12 +367,34 @@ export default function Home() {
     if (!data || data.length === 0) return [];
     const firstRow = data[0];
     const keys = Object.keys(firstRow).filter(key => key !== 'id' && key !== '_id' && key !== '__v');
-    return keys.map((key) => ({
+    
+    // Serial number column
+    const serialColumn = {
+      id: 'serialNo',
+      header: 'S.No',
+      size: 70,
+      enableSorting: false,
+      enableColumnFilter: false,
+      enableClickToCopy: false,
+      Cell: ({ row }) => row.index + 1,
+      muiTableBodyCellProps: {
+        align: 'center',
+        sx: { fontWeight: 600, color: 'text.secondary' },
+      },
+      muiTableHeadCellProps: {
+        align: 'center',
+        sx: { fontWeight: 700 },
+      },
+    };
+    
+    const dataColumns = keys.map((key) => ({
       accessorKey: key,
       header: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
       size: 180,
       enableClickToCopy: true,
     }));
+    
+    return [serialColumn, ...dataColumns];
   }, []);
 
   const normalizeData = useCallback((data) => {
@@ -604,7 +741,21 @@ export default function Home() {
                 </Typography>
               </Box>
 
-              <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+                {importResult?.partialSuccess && importResult?.remainingRecords > 0 && (
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    startIcon={<PlayIcon />}
+                    onClick={handleRetryRemaining}
+                    sx={{
+                      borderRadius: 3,
+                      px: 3,
+                    }}
+                  >
+                    Retry Remaining ({importResult.remainingRecords} records)
+                  </Button>
+                )}
                 <Button
                   variant="contained"
                   color="primary"
