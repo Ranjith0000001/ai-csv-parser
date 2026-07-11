@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dev:all": "concurrently \"npm run dev\" \"cd backend && node server.js\""
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -14,6 +15,7 @@
     "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.2.0",
     "axios": "^1.18.1",
+    "concurrently": "^10.0.3",
     "material-react-table": "^3.2.1",
     "next": "16.2.10",
     "papaparse": "^5.5.4",

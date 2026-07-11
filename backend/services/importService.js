@@ -1,25 +1,26 @@
 /**
  * Import service – handles all business logic for CSV data import.
  *
- * Currently returns the received data without modification.
- * This is the layer where future AI / transformation logic would be added.
+ * Receives parsed CSV rows, sends them to the AI service for CRM field mapping,
+ * and returns the mapped records.
  */
+const { mapToCrmSchema } = require('./aiService');
 
 /**
- * Process incoming CSV row data.
+ * Process incoming CSV row data through the AI service for CRM field mapping.
  *
  * @param {object[]} rows - Array of row objects parsed from the CSV.
- * @returns {{ success: boolean, message: string, totalRecords: number, rows: object[] }}
+ * @returns {Promise<{ success: boolean, message: string, totalRecords: number, rows: object[] }>}
  */
-function processImport(rows) {
-  // Business logic placeholder – currently returns data as-is.
-  // Future: Gemini AI processing, field mapping, duplicate detection, etc.
+async function processImport(rows) {
+  // Send rows to AI service for intelligent CRM field mapping
+  const mappedRows = await mapToCrmSchema(rows);
 
   return {
     success: true,
     message: 'CSV data received successfully.',
-    totalRecords: rows.length,
-    rows, // echo back the received rows
+    totalRecords: mappedRows.length,
+    rows: mappedRows,
   };
 }
 

@@ -32,7 +32,7 @@ async function importData(req, res, next) {
     }
 
     // ── Delegate to service ───────────────────────────────────
-    const result = processImport(rows);
+    const result = await processImport(rows);
 
     // ── Send response ─────────────────────────────────────────
     res.status(200).json(result);
